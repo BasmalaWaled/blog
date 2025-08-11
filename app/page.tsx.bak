@@ -1,0 +1,357 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import AuthGuard from '@/components/AuthGuard';
+
+type Post = {
+  id: number;
+  title: string;
+  content: string;
+  author: {
+    name: string;
+  };
+  createdAt?: string;
+};
+
+const HomePage = () => {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    router.push('/login');
+  };
+
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch('/api/posts');
+      if (!res.ok) throw new Error('Failed to fetch posts');
+      const data = await res.json();
+      setPosts(data);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deletePost = async (id: number) => {
+    if (!confirm('هل أنت متأكد من حذف هذا المقال؟')) return;
+    
+    try {
+      const res = await fetch(`/api/posts/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        setPosts(posts.filter(post => post.id !== id));
+      } else {
+        alert('فشل في حذف المقال');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('خطأ في حذف المقال');
+    }
+  };
+
+  const filteredPosts = posts.filter(post =>
+    post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    post.author.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // صور متنوعة للمقالات
+  const getPostImage = (postId: number) => {
+    const images = [
+      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=250&fit=crop&crop=center', // كمبيوتر وكود
+      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=250&fit=crop&crop=center', // رسوم بيانية
+      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=250&fit=crop&crop=center', // تحليلات وبيانات
+      'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=400&h=250&fit=crop&crop=center', // لابتوب وقهوة
+      'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=400&h=250&fit=crop&crop=center', // تقنية وأجهزة
+      'https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400&h=250&fit=crop&crop=center', // برمجة وكود
+      'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&h=250&fit=crop&crop=center', // تطوير ويب
+      'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400&h=250&fit=crop&crop=center', // ذكاء اصطناعي
+    ];
+    return images[postId % images.length];
+  };
+
+  useEffect(() => {
+     fetchPosts();
+   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow-sm">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-8">
+                <h1 className="text-2xl font-bold text-blue-600">Blogger</h1>
+                <nav className="flex space-x-8">
+                  <a href="#" className="text-gray-900 hover:text-blue-600 font-medium">Home</a>
+                  <a href="#" className="text-gray-500 hover:text-blue-600">Create</a>
+                </nav>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled
+                  />
+                  <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                  New Post
+                </button>
+                <div className="w-10 h-10 bg-orange-400 rounded-full flex items-center justify-center">
+                  <span className="text-white font-medium">👤</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading posts...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-2xl font-bold text-blue-600">Blogger</h1>
+              <nav className="flex space-x-8">
+                <a href="/" className="text-gray-900 hover:text-blue-600 font-medium">Home</a>
+                <a href="/create" className="text-gray-500 hover:text-blue-600">Create</a>
+                <button 
+                  onClick={handleLogout}
+                  className="text-red-500 hover:text-red-600 transition-colors"
+                >
+                  Logout
+                </button>
+              </nav>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                New Post
+              </button>
+              <div className="w-10 h-10 bg-orange-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-medium">👤</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-8">
+          <div className="flex-1">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8">Latest Posts</h2>
+            
+            {filteredPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">No posts available</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {filteredPosts.map((post) => (
+                  <div key={post.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+                    <div className="flex">
+                      <div className="flex-1 p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2 hover:text-blue-600 cursor-pointer">
+                          {post.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-3">
+                          by <span className="font-medium">{post.author.name}</span>
+                        </p>
+                        <p className="text-gray-600 mb-4 line-clamp-2">
+                          {post.content}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <button className="text-blue-600 hover:text-blue-800 font-medium">
+                            Read More
+                          </button>
+                          <button
+                            onClick={() => deletePost(post.id)}
+                            className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
+                            title="Delete post"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="w-48 h-32 flex-shrink-0 relative overflow-hidden">
+                        <img 
+                          src={getPostImage(post.id)} 
+                          alt={post.title}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            // في حالة فشل تحميل الصورة، استخدم صورة افتراضية
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://via.placeholder.com/400x250/3B82F6/FFFFFF?text=Blog+Post';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <aside className="w-80 hidden lg:block">
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">About</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Welcome to our blog! Discover insightful articles, tutorials, and the latest trends in technology, design, and innovation.
+            </div>
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+              New Post
+            </button>
+            <div className="w-10 h-10 bg-orange-400 rounded-full flex items-center justify-center">
+              <span className="text-white font-medium">👤</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex gap-8">
+        <div className="flex-1">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">Latest Posts</h2>
+          
+          {filteredPosts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No posts available</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredPosts.map((post) => (
+                <div key={post.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+                  <div className="flex">
+                    <div className="flex-1 p-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 hover:text-blue-600 cursor-pointer">
+                        {post.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-3">
+                        by <span className="font-medium">{post.author.name}</span>
+                      </p>
+                      <p className="text-gray-600 mb-4 line-clamp-2">
+                        {post.content}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <button className="text-blue-600 hover:text-blue-800 font-medium">
+                          Read More
+                        </button>
+                        <button
+                          onClick={() => deletePost(post.id)}
+                          className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
+                          title="Delete post"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="w-48 h-32 flex-shrink-0 relative overflow-hidden">
+                      <img 
+                        src={getPostImage(post.id)} 
+                        alt={post.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          // في حالة فشل تحميل الصورة، استخدم صورة افتراضية
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'https://via.placeholder.com/400x250/3B82F6/FFFFFF?text=Blog+Post';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <aside className="w-80 hidden lg:block">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">About</h3>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              Welcome to our blog! Discover insightful articles, tutorials, and the latest trends in technology, design, and innovation.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Posts</h3>
+            <div className="space-y-4">
+              {posts.slice(0, 4).map((post) => (
+                <div key={post.id} className="flex items-center space-x-3 border-b border-gray-100 pb-3 last:border-b-0">
+                  <img 
+                    src={getPostImage(post.id)} 
+                    alt={post.title}
+                    className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://via.placeholder.com/48x48/3B82F6/FFFFFF?text=P';
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer mb-1 truncate">
+                      {post.title}
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      by {post.author.name}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+    </div>
+  </AuthGuard>
+);
+    </AuthGuard>
+  );
+};
+
+export default HomePage;
+
